@@ -1,6 +1,7 @@
 # Fidelio
-Toy program for learning cryptography [Python]
+toy program for learning cryptography
 
-Fidelio performs Caesar, polyalphabetic, and RSA encryption/decryption of text strings. Includes RSA key generator and explanation. Fidelio is designed for educational purposes and is NOT intended for professional use.
+Fidelio performs Caesar, polyalphabetic, and RSA encryption/decryption of text strings.  
+Fidelio is designed for educational purposes and is NOT intended for professional use.
 
-The instruction manual is here: https://sites.google.com/site/samkennerly/programs
+See [Fidelio.pdf](https://github.com/samkennerly/Fidelio/blob/master/Fidelio.pdf) for explanations of the algorithms.
