@@ -1,267 +1,426 @@
-#	Fidelio is a toy program for teaching various encryption and decryption schemes.
-#
-#	 Copyright 2009 Sam Kennerly
-#
-#    This file is part of Fidelio.
-#
-#    Fidelio is free software: you can redistribute it and/or modify
-#    it under the terms of the GNU General Public License as published by
-#    the Free Software Foundation, either version 3 of the License, or
-#    (at your option) any later version.
-#
-#    Fidelio is distributed in the hope that it will be useful,
-#    but WITHOUT ANY WARRANTY; without even the implied warranty of
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#    GNU General Public License for more details.
-#
-#    You should have received a copy of the GNU General Public License
-#    along with Foobar.  If not, see <http://www.gnu.org/licenses/>.
-
-# -------------------------- FUNCTIONS ------------------------------------
-
+'''
+Import this module into fidelio.py
+'''
 import random
 
-# This function translates a text message into a list of ints using a dictionary. (see Global Variables.)
-# Any char NOT stored in the dictionary is assigned the number len(dictionary).
-# Example: for a 26-char alphabet, the first letter is 0 and 26 represents an unknown char.
-def makenumbers(text_input, dictionary):
-	digits = []
-	for letter in text_input:
-		if letter in dictionary:
-			digits.append(dictionary[letter])
-		else:
-			digits.append(len(dictionary))
-			# if <dictionary> is e.g. 42 chars long, 42 will represent an unencodable character.
-	return digits
 
-# This function translates a number list into a string of text using an alphabet.
-# Any number not represented by a char in the alphabet is represented as a space.
-def makeletters(number_list, alphabet):
-	letters = ""
-	for i in range ( len(number_list) ) :
-		if number_list[i] >= len(alphabet) :
-			letters += " "
-		else :
-			letters += alphabet[ number_list[i] ]
-	return letters
+# Alphabet definitions go here.
+# Each alphabet is a tuple for mapping int -> char.
 
-# This function "packs" a list of 2-digit ints into a list of long ints with 2 *<halfsize> or fewer digits.
-# For RSA to work, we must package the plaintext as a list of numbers less than the RSA number <rsan>.
-# The key generator in this program never produces an RSA number less than 2363807161,
-# so any decimal number with 9 or fewer digits is OK.  The main program uses 8-digit packets.
-# Requires Python random library.
-def makepackets(numberlist, halfsize) :
-	packetlist = []
-	packetsize = halfsize * 2		# expecting an input list of 2-digit numbers
-	padsize = packetsize - ( (2 * len(numberlist)) % packetsize	) # number of extra digits to pad onto last packet
-	if len(numberlist) < halfsize :
-		padsize = packetsize - 2 * len(numberlist)	# exceptional case for very short messages
-	count = 0
-	while count < ( len(numberlist) - halfsize ) :
-		packet = ""
-		for j in range(0, halfsize) :
-			packet += str(numberlist[ count + j ]).zfill(2)		# zfill restores any leading zeros
-		packetlist.append(long(packet))
-		count = count + halfsize
-	# now the last packet is padded with random digits until it is the appropriate size
-	packet = ""
-	for k in range(count , len(numberlist), 1) :	# fill last packet
-		packet += str(numberlist[k]).zfill(2)
-		if len(packet) == packetsize :			# if packet is exactly full, create an extra one anyway
-			packetlist.append(long(packet))
-			packet = ""
-	for l in range(0, padsize -1 , 1) :			# pad with random digits
-		packet += str(random.randint(0,9))
-	packet += str(padsize)		# last digit is "number of digits to discard later"
-	packetlist.append(long(packet))
-	return packetlist
+# Classic encryption (with no whitespace!)
+ALPHABET26 = ('A','B','C','D','E','F','G','H','I',      \
+            'J','K','L','M','N','O','P','Q','R','S',    \
+            'T','U','V','W','X','Y','Z')
 
-# This function "unpacks" a list of 2*<halfsize>-digit longs to produce a list of ints between 0-99 inclusive.
-def unpack(packetlist, halfsize) :
-	packetsize = halfsize * 2
-	outputlist = []
-	packet = ""
-	for i in range(0, len(packetlist) - 1, 1) :		# last packet will be handled after this loop
-		packet = str(packetlist[i]).zfill(packetsize)	# zfill restores any leading zeros
-		for j in range(0, packetsize, 2) :
-			outputlist.append(int(packet[j:j+2]))
-	packet = str(packetlist[ len(packetlist) - 1 ]).zfill(packetsize)
-	padsize = int(packet[ packetsize - 1 ])			# remember, last digit of last packet is padsize.
-	packet = packet[:-padsize]						# deletes extra padding from last packet
-	for k in range(0, len(packet), 2) :
-		outputlist.append(int(packet[k:k+2]))
-	return outputlist
+# This should be enough for basic messaging
+ALPHABET42 = ('0','1','2','3','4','5','6','7','8','9',  \
+            ' ','A','B','C','D','E','F','G','H','I',    \
+            'J','K','L','M','N','O','P','Q','R','S',    \
+            'T','U','V','W','X','Y','Z',',','.','?',    \
+            '!',' ')
 
-# This function outputs an encrypted string of text using a Caesar cipher.
-# Inputs: text message, chosen alphabet, dictionary, and number of chars to shift.
-# ROT13 is a shift of 13; the classic Caesar cipher is a shift of 3.
-def caesarshift(message, alphabet, dictionary, shift):
-	numberlist = makenumbers(message, dictionary)
-	for i in range( len(numberlist) ) :
-		if numberlist[i] < len(alphabet) :
-			numberlist[i] = (numberlist[i] + shift) % (len(alphabet))
-			# Characters not in the selected alphabet are left unencrypted.
-	return makeletters(numberlist, alphabet)
-	
-# This function encrypts a string of text using a polyalphabetic cipher.
-# Note that this scheme requires a password input; this password works as a shared key.
-def dodgsonencrypt(message, alphabet, dictionary, password):
-	numberlist = makenumbers(message, dictionary)
-	keystring = ""
-	# Produce a key.  If password is FIDELIO and message is 15-21 chars long, key is FIDELIOFIDELIOFIDELIO
-	for j in range( len(numberlist) / len(password) + 1 ) :
-		keystring += password
-	# Convert key into a list of numbers, then apply polyalphabetic cipher to original message.
-	keylist = makenumbers(keystring, dictionary)
-	for i in range ( len(numberlist) ) :
-		if numberlist[i] < len(alphabet) :
-			numberlist[i] = (numberlist[i] + keylist[i] + 1 ) % (len(alphabet))
-	return makeletters(numberlist, alphabet)
-	
-# This function decrypts the polyalphabetic cipher from the previous function.
-def dodgsondecrypt(ciphertext, alphabet, dictionary, password):
-	numberlist = makenumbers(ciphertext, dictionary)
-	keystring = ""
-	for j in range( len(numberlist) / len(password) + 1 ) :
-		keystring += password
-	keylist = makenumbers(keystring, dictionary)
-	for i in range ( len(numberlist) ) :
-		if numberlist[i] < len(alphabet) :
-			numberlist[i] = (numberlist[i] - keylist[i] - 1) % (len(alphabet))
-	return makeletters(numberlist, alphabet)
-	
-# This function performs frequency analysis on an input string.
-def freqanalyze(inputstring):
-	freqdict = {}				# list of chars and the number of times that char appears
-	for c in inputstring :
-		if c in freqdict :
-			freqdict[c] = freqdict[c] +1
-		else :
-			freqdict[c] = 1
-	resultlist = sorted(freqdict.items(), key=lambda (k,v): v, reverse=True)	# sort letters by value
-	return resultlist
+# ASCII chars 32-127 (0-31 are special system commands)
+ALPHABET96 = tuple([ chr(i) for i in range(32,128) ])
 
-# This function uses the extended Euclidean algorithm to find the multiplicative inverse of x (mod phi).
-# It is needed to generate keys for RSA encryption.
-def findinverse(x, phi):		
-	nlist = [phi, x]
-	plist = [long(0)]
-	alist = [long(1),long(0)]
-	blist = [long(0),long(1)]
+# Where did we save the list of prime numbers?
+PRIMES_FILE     = 'Primes.txt'
 
-	if nlist[0] % nlist[1] == 0 :
-		print "Error! Public key is not coprime to totient."
-	else :
-		count = int(0)
-		r = long(1)
-		while r != 0 :
-			plist.append( nlist[count] / nlist[count + 1] )						# creates p(count+1)
-			alist.append( alist[count] - plist[count + 1] * alist[count + 1] ) 	# creates a(count+2)
-			blist.append( blist[count] - plist[count + 1] * blist[count + 1] )	# creates b(count+2)
-			r = nlist[count] % nlist[count + 1]
-			nlist.append(r)														# creates phi(count+2)
-			count = count + 1
-	return blist[count] % phi
+# How many of the first prime numbers are off-limits for being too small?
+DISCARD_PRIMES  = 1000
 
-# This function generates an RSA number, totient, public and private key stored as a list.
-# Requires the function <findinverse>, Python random library, and file "10000primes.txt" to work.
+
+# Functions for mapping text <-> [list of integers]
+
+def char_to_num(alphabet):
+    ''' Make a dictionary with chars as keys and ints as values '''
+
+    char_dict = dict.fromkeys(alphabet)
+    for k in range(len(alphabet)):
+        char_dict[ alphabet[k] ] = k
+
+    return char_dict
+
+def text_to_digits(text,alphabet=ALPHABET96):
+    '''
+    Transform a string into a list of ints.
+    Caution: characters not in the alphabet will be dropped!
+    '''
+
+    char_dict   = char_to_num(alphabet)
+    digits      = [ char_dict[x] for x in text if x in char_dict.keys() ]
+
+    return digits
+
+def digits_to_text(digits,alphabet=ALPHABET96):
+    ''' Transform a list of ints into a string '''
+
+    too_big = len(alphabet)
+    text    = [ alphabet[x] for x in digits if x < too_big ]
+    text    = "".join(text)
+
+    return text
+
+
+
+# Simple encryption functions
+
+def caesar(plain_text,shift=3,decrypt=False,alphabet=ALPHABET96):
+    '''
+    Caesar cipher: shift all characters by the same amount
+    using modular arithmetic. Default is classic Caesar.
+    Set shift=13 for ROT13 scheme, which is its own inverse.
+    '''
+    
+    if decrypt:
+        shift *= -1
+
+    digits      = text_to_digits(plain_text,alphabet)
+    cipher      = [ (x+shift) % len(alphabet) for x in digits ]
+    cipher_text = digits_to_text(cipher,alphabet)
+
+    return cipher_text
+
+def dodgson(plain_text,password,decrypt=False,alphabet=ALPHABET96):
+
+    digits      = text_to_digits(plain_text,alphabet)
+    passcode    = text_to_digits(password,alphabet)
+
+    if decrypt:
+        passcode = [ -x for x in passcode ]
+
+    # Make a passcode which is the same length as [digits].
+    # Repeat the passcode as many times as necessary.
+    nDigits     = len(digits)
+    full_code   = passcode.copy()
+    for k in range(0,nDigits,len(passcode)):
+        full_code.extend(passcode)
+    full_code   = full_code[0:nDigits]
+
+    # Shift each digit by the corresponding amount in [full_code]
+    cipher = [ (digits[k]+full_code[k]) % len(alphabet) for k in range(nDigits) ]
+
+    cipher_text = digits_to_text(cipher,alphabet)
+
+    return cipher_text
+
+
+
+# Functions for packing and padding a list of 2-digit ints
+
+def packetize(digits):
+    '''
+    Convert a list of 1- and 2-digit numbers into a shorter list of 8-digit numbers.
+    Pad the last packet with random digits if needed.
+    Last digit of last packet counts how much padding was used (including itself).
+    NOTE:   Converting int -> string -> int is not very efficient.
+            This is an educational program, not a professional crypto tool!
+    '''
+
+    # Combine list of integers into one big string of digits
+    one_big_string  = [ str(x).zfill(2) for x in digits ]
+    one_big_string  = ''.join(one_big_string)
+
+    # Break the big string into packets
+    steps   = range(0,len(one_big_string),8)
+    packets = [ one_big_string[n:n+8] for n in steps ]
+
+    # Add padding
+    def pad_me(packet):
+
+        nDigits     = 8 - len(packet)
+        pads        = [ random.randint(0,9) for n in range(nDigits) ]
+        pads[-1]    = nDigits
+        pads        = ''.join([ str(x) for x in pads ])
+
+        return packet + pads
+
+    # If the last packet is exactly 8 digits, then append another packet.
+    # This last packet will be all pads.
+    if len(packets[-1]) == 8:
+        packets.append('')
+
+    packets[-1] = pad_me(packets[-1])
+
+    # Convert back to integers after we're done playing with digits
+    packets = [ int(x) for x in packets ]
+
+    return packets
+
+def unpacketize(packets):
+    ''' Undo packetize() function '''
+
+    # How much padding was added to the last packet?
+    nPads = packets[-1] % 10
+
+    # Convert each packet to a string of digits
+    packets = [ str(x).zfill(8) for x in packets ]
+
+    # Remove any digits that were actually random
+    if nPads == 8:
+        del packets[-1]
+    else:
+        packets[-1] = packets[-1][0:8-nPads]
+
+    # Prepare to chop each packet into 2-digit numbers
+    def chop_packet(packet):
+    
+        steps   = range(0,len(packet),2)
+        pieces  = [ int(packet[n:n+2]) for n in steps ]
+
+        return pieces
+
+    # Dynamically re-sizing a list is slow, but let's do it anyway
+    digits = []
+    for x in packets:
+        digits += chop_packet(x)
+
+    return digits
+
+
+# Maths for RSA
+
+def gcd(x,y):
+    '''
+    Find the greatest common denominator of two positive ints.
+    (This is a recursive version of the Euclidean Algorithm.)
+    '''
+    if y == 0:
+        return x
+    return gcd(y,x%y)
+
+def gcd_factor(e,n,verbose=False):
+    '''
+    Given two positive integers e and n with e < n, the 
+    Extended Euclidean Algorithm finds x,y such that
+    nx + ey = gcd(e,n). This is a limited version which finds
+    gcd(e,n) and x, but doesn't bother finding y.
+    '''
+    
+    assert e < n, "First arg should be smaller than second arg!"
+    
+    r = (n,e)
+    x = (0,1)
+    while r[1] > 0:
+        if verbose:
+            print( r[0], x[0] )
+        quotient = r[0] // r[1]
+        next_r = r[0] - quotient * r[1]
+        next_x = x[0] - quotient * x[1]
+        r = ( r[1], next_r )
+        x = ( x[1], next_x )
+        
+    # We want the results just before the last row
+    gcd = r[0]
+    x   = x[0]
+    
+    # If x is negative, then replace it with a positive
+    # number which is equivalent to x (mod n).
+    if x < 0:
+        x = x % n
+        
+    return gcd, x
+
+def test_gcd_factor(e,n,verbose=False):
+    '''
+    It's remarkably easy to screw up the Extended Euclidean Algorithm.
+    Use this to verify that gcd_factor() does what I think it does.
+    '''
+    
+    gcd_test, x_test = gcd_factor(e,n)
+        
+    # Did we get the correct GCD?
+    gcd_true = gcd(n,e)
+    if gcd_test != gcd_true :
+        print( "GCD of %s and %s is %s, not %s" % (e,n,gcd_true,gcd_test) )
+        return False
+    
+    # Does (e * x) % n = gcd(e,n) ?
+    product_test = (e*x_test) % n
+    if product_test != gcd_true:
+        print( "%s times %s mod %s is %s, not %s" % (e,x_test,n,product_test,gcd_true) )
+        return False
+    
+    return True
+
+
+
+# RSA functions
+
+def load_primes(too_small=None,too_large=None):
+    '''
+    Load prime numbers from a text file.
+    Discard numbers which are too large or too small.
+    '''
+
+    print( "Loading prime numbers from %s" % PRIMES_FILE )
+    with open(PRIMES_FILE,'r') as f:
+        primes = f.read()
+
+    # Parse the text file
+    primes = [ int(x) for x in primes.split(' ') ]
+
+    # Only use primes within selected range
+    if too_small is not None:
+        primes = [ x for x in primes if x > too_small ]
+    if too_large is not None:
+        primes = [ x for x in primes if x < too_large ]
+
+    return primes
+
+def choose_rsa_number(primes,verbose=False):
+    ''' Generate an RSA number and find its Euler totient '''
+
+    [p,q]   = random.sample(primes,2)
+    n       = p * q
+    totient = (p-1) * (q-1)
+
+    if verbose:
+        print( "RSA number is %s * %s = %s" % (p,q,n) )
+        print( "Euler totient is %s" % totient )
+
+    return n, totient
+
+def choose_public_key(primes,totient,verbose=False):
+    ''' Choose a public key suitable for our RSA number and totient '''
+
+    assert primes[0] < totient, "Need prime numbers less than totient!"
+
+    # Use rejection sampling: choose random samples until we get a good one
+    for n in range(1000):
+        
+        [public_key] = random.sample(primes,1)
+
+        if verbose:
+            print( "Testing public key %s" % public_key )
+
+        if (public_key >= totient) | (totient % public_key ==0):
+            continue
+
+        else:
+            print( "Public key is %s" % public_key )
+            return public_key
+
+    # Hopefully we never get this far
+    raise RuntimeError("Gave up trying to find a good public key!")
+
+def find_private_key(public_key,totient,verbose=False):
+    '''
+    Find the multiplicative inverse (mod totient) of the public key.
+    This inverse does not exist if public, totient are not relatively prime!
+    Throw an exception if that happens.
+    '''
+
+    gcd, private_key = gcd_factor(public_key,totient)
+    assert (gcd == 1), "GCD of public key %s and totient %s is %s, not 1" % (public_key,totient,gcd)
+
+    if verbose:
+        print( "Private key is %s" % private_key )
+
+    return private_key
+
+def generate_keys(too_small=10000,too_large=100000,verbose=False):
+    ''' Generate RSA number, public key, and private key '''
+
+    primes      = load_primes(too_small,too_large)
+    n, totient  = choose_rsa_number(primes,verbose)
+    public_key  = choose_public_key(primes,totient,verbose)
+    private_key = find_private_key(public_key,totient,verbose)
+
+    return n, public_key, private_key
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 def generatekey():
-	primesfile = open("10000primes.txt", "r")
-	primeslist = primesfile.read().split()
-	prime0 = int(primeslist[random.randint(5000,len(primeslist))])	# The first 5000 primes are not used.
-	prime1 = int(prime0)		# initialize <prime1>
-	while prime1 == prime0 :		# This loop ensures that the two primes are not the same.
-		prime1 = int(primeslist[random.randint(5000,len(primeslist))])
-	totient = (prime0 - 1) * (prime1 - 1)
-	rsan = prime0 * prime1
-	# Choose a (prime) public key that is large but less than the totient.
-	publickey = 10968163441			# This is the 10000th prime squared; totient is less than this
-	while publickey > totient:
-		publickey = int(primeslist[random.randint(5000,len(primeslist))])	# First 5000 primes not used.	
-	# <findinverse> finds the multiplicative inverse of the public key (mod totient).
-	privatekey = findinverse(publickey, totient)
-	RSAkeylist = [prime0, prime1, rsan, publickey, privatekey, totient]
-	return RSAkeylist
+    '''
+    Generate an RSA number, totient, public and private key
+    '''
 
-# These functions encypt and decrypt a list of long ints using the RSA scheme.
-# Requires function <modexp> for fast modular exponentiation.
+    primesfile = open("10000primes.txt", "r")
+    primeslist = primesfile.read().split()
+    prime0 = int(primeslist[random.randint(5000,len(primeslist))])  # The first 5000 primes are not used.   
+    prime1 = int(prime0)
+
+    while prime1 == prime0 :        # This loop ensures that the two primes are not the same.
+        prime1 = int(primeslist[random.randint(5000,len(primeslist))])
+    totient = (prime0 - 1) * (prime1 - 1)
+    rsan = prime0 * prime1
+    
+    # Choose a (prime) public key that is large but less than the totient.
+    publickey = 10968163441         # This is the 10000th prime squared; totient is less than this
+    while publickey > totient:
+        publickey = int(primeslist[random.randint(5000,len(primeslist))])   # First 5000 primes not used.   
+    
+    # <findinverse> finds the multiplicative inverse of the public key (mod totient).
+    privatekey = findinverse(publickey, totient)
+    RSAkeylist = [prime0, prime1, rsan, publickey, privatekey, totient]
+
+    return RSAkeylist
+
 def RSAencrypt(packetlist, rsan, publickey):
-	cipherlist = []
-	cipherpacket = ""
-	for i in range(len(packetlist)) :
-		cipherlist.append( modexp( packetlist[i], publickey, rsan ) )
-	return cipherlist
+    '''
+    Encrypt a list of long ints using the RSA scheme.
+    '''
+
+    cipherlist = []
+    cipherpacket = ""
+    for i in range(len(packetlist)) :
+        cipherlist.append( modexp( packetlist[i], publickey, rsan ) )
+
+    return cipherlist
 
 def RSAdecrypt(cipherlist, rsan, privatekey):
-	decryptedlist = []
-	for i in range(len(cipherlist)) :
-		decryptedlist.append( modexp( cipherlist[i] , privatekey , rsan ) )
-	return decryptedlist
+    ''' Decrypt result of RSAencrypt '''
 
-# This function performs fast modular exponentiation of large numbers.
-# Author: Wojtek Jamrozy (www.wojtekrj.net)
+    decryptedlist = []
+    for i in range(len(cipherlist)) :
+        decryptedlist.append( modexp( cipherlist[i] , privatekey , rsan ) )
+
+    return decryptedlist
+
 def modexp(a, n, m):
-	bits = []
-	while n:
-		bits.append(n%2)
-		n /= 2
-	solution = 1
-	bits.reverse()
-	for x in bits:
-		solution = (solution*solution)%m
-		if x:
-			solution = (solution*a)%m
-	return solution
+    '''
+    Fast modular exponentiation of large numbers
+    Author: Wojtek Jamrozy (www.wojtekrj.net)
+    '''
 
-# This function asks the user to select an alphabet from the ones defined in Global Variables.
-# If you add your own alphabets, be sure to modify this function to include it.
-def selectalphabet():
-	size = raw_input("Select alphabet size: [26] [42] [96] or hit Enter for default of 96. \t\t")
-	if size == "26" :
-		alphabet = ALPHABET26
-		dictionary = LOOKUP26
-	elif size == "42" :
-		alphabet = ALPHABET42
-		dictionary = LOOKUP42
-	else :
-		alphabet = ALPHABET96
-		dictionary = LOOKUP96
-		print "Using 96-character alphabet."
-	return (alphabet, dictionary)
+    bits = []
+    while n:
+        bits.append(n%2)
+        n /= 2
+    solution = 1
+    bits.reverse()
+    for x in bits:
+        solution = (solution*solution)%m
+        if x:
+            solution = (solution*a)%m
+
+    return solution
 
 
 
-# ----------------- GLOBAL VARIABLES -------------------------------
 
-# A map from characters to integers and back is represented here by two parts:
-# 1) an ALPHABET tuple that lists the chars in order (used for converting numbers -> text), and
-# 2) a LOOKUP dictionary (made from the corresponding ALPHABET) for converting text -> numbers.
-# If you want to add your own alphabet, be sure to modify the function <selectalphabet> accordingly!
-# WARNING: this program can only handle alphabets with 99 or fewer characters!
 
-# traditional 26-letter alphabet for classical encryption schemes
-ALPHABET26 = ('A','B','C','D','E','F','G','H','I',\
-			'J','K','L','M','N','O','P','Q','R','S',\
-			'T','U','V','W','X','Y','Z')
-LOOKUP26 = {}
-for i in range (0,26,1):
-	LOOKUP26[ ALPHABET26[i] ] = i
-
-# 42-char alphabet for basic text messaging
-ALPHABET42 = ('0','1','2','3','4','5','6','7','8','9',\
-			' ','A','B','C','D','E','F','G','H','I',\
-			'J','K','L','M','N','O','P','Q','R','S',\
-			'T','U','V','W','X','Y','Z',',','.','\'',\
-			'?','!')
-LOOKUP42 = {}
-for i in range (0,42,1):
-	LOOKUP42[ ALPHABET42[i] ] = i
-
-# 96-char alphabet of ASCII chars 32-127 (0-31 are system commands not typically used in text messages).
-# note that the list of characters is actually a list, not a tuple
-ALPHABET96 = []
-for i in range(32,128):
-	ALPHABET96.append( chr(i) )
-LOOKUP96 = {}
-for j in range(96):
-	LOOKUP96[ ALPHABET96[j] ] = j
