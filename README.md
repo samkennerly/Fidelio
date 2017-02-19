@@ -1,7 +1,15 @@
 # Fidelio
-toy program for learning cryptography
+educational program for learning cryptography
 
-Fidelio performs Caesar, polyalphabetic, and RSA encryption/decryption of text strings.  
-Fidelio is designed for educational purposes and is NOT intended for professional use.
+Fidelio demonstrates several encryption schemes:
 
-See [Fidelio.pdf](https://github.com/samkennerly/Fidelio/blob/master/Fidelio.pdf) for explanations of the algorithms.
+* Caesar ciphers including ROT13, ROT47, and the original 3-letter shift
+* Polyalphabetic ciphers
+* RSA public-key encryption using Euler's totient method for key generation
+
+See the [fidelio demo notebook](https://github.com/samkennerly/Fidelio/blob/master/fidelio.ipynb) for an introduction.
+The [RSA demo notebook](https://github.com/samkennerly/Fidelio/blob/master/RSA.ipynb) demonstrates RSA encryption.
+
+In 2017, I completely rewrote Fidelio and replaced the old PDF documentation with Jupyter notebooks. The original 2009 code is in the [ARCHIVE](https://github.com/samkennerly/Fidelio/tree/master/ARCHIVE) folder.
+
+**Fidelio is designed for educational purposes and is not intended for secure communications.**
