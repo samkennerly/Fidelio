@@ -1,5 +1,5 @@
 # Password and RSA private key
-.private
+private.json
 
 # macOS weirdness
 .DS_Store
