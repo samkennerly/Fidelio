@@ -1,4 +1,10 @@
+# Password and RSA private key
+.private
+
+# macOS weirdness
 .DS_Store
+
+# Caches and Jupyter checkpoints
 .ipynb_checkpoints
 __pycache__
 *.pyc
