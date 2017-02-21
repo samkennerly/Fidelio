@@ -16,7 +16,6 @@ state = {
     'rsa_number'    : None,
     'public_key'    : None,
     'private_key'   : None,
-    'key_files'     : False,
     'terminate'     : False }
 
 
