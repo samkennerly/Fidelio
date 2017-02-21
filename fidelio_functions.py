@@ -78,10 +78,10 @@ def dodgson(plain_text,password,alphabet=DEFAULT_100,decrypt=False):
 
 # RSA encryption functions
 
-def generate_keys(too_small=10000,too_large=100000,verbose=False):
+def generate_keys(verbose=False):
     ''' Generate RSA number, public key, and private key '''
 
-    primes      = load_primes(too_small,too_large)
+    primes      = load_primes(10000,100000)
     n, totient  = choose_rsa_number(primes,verbose)
     public_key  = choose_public_key(primes,totient,verbose)
     private_key = find_private_key(public_key,totient,verbose)

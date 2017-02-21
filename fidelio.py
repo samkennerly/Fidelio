@@ -5,13 +5,13 @@ Use fidelio_functions interactively from the command line
 import fidelio_functions as ff
 import json
 
-PUBLIC_FILE     = 'rsa.json'
+PUBLIC_FILE     = 'public.json'
 PRIVATE_FILE    = 'private.json'
 
 
 # All global state info goes here
-State = {
-    'alphabet'      : ff.ASCII_94,
+state = {
+    'alphabet'      : ff.DEFAULT_100,
     'password'      : 'FIDELIO',
     'rsa_number'    : None,
     'public_key'    : None,
@@ -92,9 +92,9 @@ def select_alphabet(state):
 
     options = """
     Choose an alphabet or hit Enter to use default.
-    [A] ALL_CAPS:   26 capital letters and nothing else
-    [B] CAPS_PLUS:  capital letters, digits, some punctuation
-    [C] ASCII_94:   ASCII chars 32 through 125
+    [A] ALL_CAPS:       26 capital letters and nothing else
+    [B] CAPS_PLUS:      capital letters, digits, some punctuation
+    [C] DEFAULT_100:    ASCII chars 32 through 126 and a few math symbols
     """
     selection = input(options).lower()
     print( )
@@ -108,8 +108,8 @@ def select_alphabet(state):
         state['alphabet'] = ff.CAPS_PLUS
 
     else:
-        print( "Using default 94-char alphabet 'ASCII_94'" )
-        state['alphabet'] = ff.ASCII_94
+        print( "Using default %s-char alphabet 'DEFAULT_100" % len(ff.DEFAULT_100) )
+        state['alphabet'] = ff.DEFAULT_100
 
     return state
 
@@ -177,7 +177,7 @@ def decrypt_message(state):
         private_key = state['private_key']
 
         if rsa_number & private_key:
-            decipher = ff.rsa_decrypt(msg,rsa_number,private_key,state['alphabet'])
+            decipher = ff.rsa_decrypt(msg,rsa_number,private_key)
             print("\nRSA decryption:")
             print(decipher)
 
@@ -214,7 +214,7 @@ def encrypt_message(state):
         if not public_key:
             public_key = state['public_key']
 
-        cipher = ff.rsa_encrypt(msg,int(rsa_number),int(public_key),state['alphabet'])
+        cipher = ff.rsa_encrypt(msg,int(rsa_number),int(public_key))
         print("\nRSA encryption:")
         print(cipher)
 
@@ -228,24 +228,6 @@ def generate_rsa_keys(state):
     state['rsa_number'], state['public_key'], state['private_key'] = ff.generate_keys()
 
     show_rsa_public(state)
-
-    return state
-
-def load_password_and_keys(state):
-
-    print( )
-
-    print( "Loading RSA number and public key from %s" % PUBLIC_FILE )
-    with open(PUBLIC_FILE,'r') as f:
-        public = json.load(f)
-        for k in public.keys():
-            state[k] = public[k]
-
-    print( "Loading password and privat key from %s" % PRIVATE_FILE )
-    with open(PRIVATE_FILE,'r') as f:
-        private = json.load(f)
-        for k in private.keys():
-            state[k] = private[k]
 
     return state
 
@@ -279,6 +261,10 @@ def show_rsa_public(state):
 
 def save_password_and_keys(state):
 
+    has_keys, has_password = check_for_keys(state)
+    if not (has_keys & has_password):
+        return state
+
     print( )
 
     print( "Saving RSA number and public key to %s" % PUBLIC_FILE )
@@ -291,9 +277,42 @@ def save_password_and_keys(state):
     with open(PRIVATE_FILE,'w') as f:
         json.dump(private,f)
 
-    state['key_files'] = True
+    return state
+
+def load_password_and_keys(state):
+
+    print( )
+
+    print( "Loading RSA number and public key from %s" % PUBLIC_FILE )
+    with open(PUBLIC_FILE,'r') as f:
+        public = json.load(f)
+        for k in public.keys():
+            state[k] = public[k]
+
+    print( "Loading password and private key from %s" % PRIVATE_FILE )
+    with open(PRIVATE_FILE,'r') as f:
+        private = json.load(f)
+        for k in private.keys():
+            state[k] = private[k]
 
     return state
+
+def check_for_keys(state):
+
+    has_rsa         = state['rsa_number'] is not None
+    has_public      = state['public_key'] is not None
+    has_private     = state['private_key'] is not None
+    has_password    = state['password'] is not None
+
+    has_keys = (has_rsa & has_public & has_private)
+
+    if not has_keys:
+        print( "No RSA keys found. Select [G] to generate keys and [S] to save them." )
+
+    if not has_password:
+        print( "Password is blank! Select [M] to modify password." )
+
+    return has_keys, has_password
 
 
 
@@ -301,16 +320,17 @@ def save_password_and_keys(state):
 
 if __name__=='__main__':
 
-    # Check for saved keys on startup
+    # Try to load password and keys on startup
     try:
-        State = load_password_and_keys(State)
-        State['key_files'] = True
+        state = load_password_and_keys(state)
     except:
-        State['key_files'] = False
+        pass
+
+    check_for_keys(state)
 
     # Run main_menu() until user quits
-    while not State['terminate']:
-        State = main_menu(State)
+    while not state['terminate']:
+        state = main_menu(state)
 
 
 
