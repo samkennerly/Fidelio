@@ -1,6 +1,8 @@
 # Password and RSA private key
-public.json
 private.json
+
+# RSA number and public key
+public.json
 
 # macOS weirdness
 .DS_Store
