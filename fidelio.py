@@ -234,7 +234,7 @@ def generate_rsa_keys(state):
 def modify_password(state):
 
     password = str(input("\nEnter a password for polyalphabetic encryption.\n"))
-    passcode = ff.text_to_digits(password,state['alphabet'])
+    passcode = ff.text_to_ints(password,state['alphabet'])
 
     if len(passcode) != len(password):
         print("\n*** Warning: password contains characters not available in selected alphabet!\n")
