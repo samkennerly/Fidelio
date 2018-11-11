@@ -1,5 +1,6 @@
-# Fidelio [Python 3]
-educational program for learning cryptography
+# Fidelio
+
+Toy program for learning cryptography.
 
 Fidelio demonstrates several encryption schemes:
 
