@@ -1,13 +1,19 @@
-# Password and RSA private key
 private.json
-
-# RSA number and public key
 public.json
 
-# macOS weirdness
-.DS_Store
+# Apple
+.DS_Store*
+.Spotlight-*
+.Trashes
+.fseventsd
+Thumbs.db
 
-# Caches and Jupyter checkpoints
-.ipynb_checkpoints
-__pycache__
-*.pyc
+# Python
+*.py[cod]
+*.egg
+*.egg-info
+__pycache__/
+.pytest_cache/
+.ipynb_checkpoints/
+.venv
+jupyter_notebook_config.*
